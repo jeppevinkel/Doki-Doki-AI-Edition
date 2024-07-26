@@ -1,0 +1,19 @@
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build VN project
+        id: build_step
+        uses: ProjectAliceDev/renpy-build-action@master
+        with:
+          sdk-version: '8.2.3'
+          project-dir: '.'
+
+      - name: Archive the build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: ${{ steps.build_step.outputs.dir }}

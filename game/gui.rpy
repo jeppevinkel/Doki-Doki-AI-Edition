@@ -58,7 +58,7 @@ define gui.interface_text_color = '#ffffff'
 
 
 
-define gui.default_font = "gui/font/Aller_Rg.ttf"
+define gui.default_font = "gui/font/Aller-Cyrillic-Regular.ttf"
 
 
 define gui.name_font = "gui/font/RifficFree-Bold.ttf"
