@@ -1,3 +1,30 @@
+label apikey_label:
+    $ apikey = renpy.input("Enter API Key", f"{persistent.chatToken}").strip()
+    $ persistent.chatToken = apikey
+    $ renpy.save_persistent()
+    return
+
+
+label custom_chat_model_label:
+    "Enter a model from your ollama list"
+    "You can check what models you have available by typing \"ollama list\" in a command line on your device."
+    $ model = renpy.input("Enter a model", f"{persistent.chatModel}").strip()
+    $ persistent.chatModel = model 
+    $ renpy.save_persistent()
+    return
+
+
+
+label custom_backstory_label:
+    "Enter your own backstory for this character. You can also navigate to \"game/assets/prompts/prompt_templates.json\" and edit the \"content\" section manually."
+    $ raw_prompt = Info().getExamplePrompts[character_name][0]["content"].split("{{format}}")[0].replace("BACKSTORY", "")
+    $ player_prompt = renpy.input(prompt=" ", default=f"{raw_prompt}", exclude="}{", screen="input_long").strip()
+    
+    $ Configs().update_character_backstory(character=character_name, backstory=player_prompt)
+    "Successfully changed backstory!"
+    return
+
+
 
 
 label start:
@@ -10,18 +37,30 @@ label start:
         config.autosave_on_choice = False
 
         def string_splitter(str, length):
-            split_sentence = str.split()
-            line = ''
-            wrapped_sentence = []
-            for word in split_sentence:
-                if len(line+word) < length:
-                    line += word + ' '
+            # A simple regex pattern to split text into sentences
+            sentence_endings = re.compile(r'(?<=[.!?]) +')
+            sentences = sentence_endings.split(str)
+
+            wrapped_sentences = []
+            current_part = ''
+
+            for sentence in sentences:
+                # Check if adding the current sentence would exceed the length
+                if len(current_part) + len(sentence) < length:
+                    current_part += sentence + ' '
                 else:
-                    wrapped_sentence.append(line.strip())
-                    line = word + ' '
-            wrapped_sentence.append(line.strip())
-            wrapped_sentence.reverse()
-            return wrapped_sentence
+                    # If current part is not empty, add it to wrapped sentences
+                    if current_part:
+                        wrapped_sentences.append(current_part.strip())
+                    # Start a new part
+                    current_part = sentence + ' '
+
+            # Add any remaining text to the wrapped sentences
+            if current_part.strip():
+                wrapped_sentences.append(current_part.strip())
+
+            wrapped_sentences.reverse()
+            return wrapped_sentences
 
     $ input_popup_gui = True
 
@@ -37,21 +76,6 @@ label start:
 
 
 
-
-label apikey_label:
-    $ apikey = renpy.input("Enter API Key", f"{persistent.chatToken}").strip()
-    $ persistent.chatToken = apikey
-    $ renpy.save_persistent()
-    return
-
-
-label custom_chat_model_label:
-    "Enter a model from your ollama list"
-    "You can check what models you have available by typing \"ollama list\" in a command line on your device."
-    $ model = renpy.input("Enter a model", f"{persistent.chatModel}").strip()
-    $ persistent.chatModel = model 
-    $ renpy.save_persistent()
-    return
 
 
 label nameWorld_label:
@@ -232,7 +256,13 @@ label AICharacter:
 
     if resume:
         $ last_msg = Data(path_to_user_dir=pathSetup).getLastMessageClean
-        $ renpy.say("[current_char_title]", last_msg)
+        $ messages = string_splitter(last_msg, 255)
+
+        while messages:
+            $ message = messages.pop()
+            if len(messages) > 0:
+                $ message += '...'
+            $ renpy.say("[current_char_title]", message)
     else:
         $ renpy.say("[current_char_title]", convo)
 

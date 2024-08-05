@@ -31,29 +31,8 @@ init python:
             with open(self.path_to_user_dir + "/chathistory.json", 'r') as f:
                 reply = json.load(f)[-1]["content"]
 
-            def getContent(start, end, reply=reply):
-                try:
-                    content = reply.split(start)[1].split(end)[0].strip()
-                    return content
-                except IndexError:
-                    return None
-                except AttributeError:
-                    return None
-
-            char = getContent('[CHAR]', '[CONTENT]')
-            face = getContent('[FACE]', '[BODY]')
-            body = getContent('[BODY]', '[CONTENT]')
-            scene = getContent('[SCENE]', '[NARRATION]')
-
             reply = reply.replace('[END]', '')
-
-            if "[CONTENT]" in reply:
-                reply = reply.split("[CONTENT]")[1].strip()
-            elif "[NARRATION]" in reply:
-                reply = reply.split("[NARRATION]")[1].strip()
-            else:
-                # Typically this means that the model didnt return a proper content field
-                reply = "ERROR"
+            reply = reply.split("[CONTENT]")[1].strip()
 
             return reply
 
@@ -119,11 +98,14 @@ init python:
             name = name.title()
             raw_bodies = [b for b in self.characters[name]["left"]] + [b for b in self.characters[name]["right"]]
             bodies = []
+            body_examples = []
             for part in raw_bodies:
-                if part not in raw_bodies:
+                if part not in bodies:
+                    example = Info().getReminder["bodies"][part].replace("{{char}}", name)
                     bodies.append(part)
+                    body_examples.append(part + example)
 
-            string = " and ".join(bodies)
+            string = " and ".join(body_examples)
             return string
 
 
@@ -144,6 +126,28 @@ init python:
         def delete_egg(self, path):
             try: os.remove(path)
             except: pass
+
+        def update_character_backstory(self, character, backstory):
+            dir_path = config.basedir + "/game/assets/configs/custom_characters"
+            data = ""
+
+            for filename in os.listdir(dir_path):
+                if filename.endswith('.json'):
+                    with open(os.path.join(dir_path, filename), 'r') as f:
+                        data = json.load(f)
+
+            path = "/game/assets/prompts/prompt_templates.json" if character not in data else f"/game/assets/configs/custom_characters/{character}.json"
+
+            with open(config.basedir + path, "r") as f:
+                template = json.load(f)
+
+            renpy.log(f"edited path is: {path}")    
+
+            # This changes the content section of the template dictionary to the "backstory" var
+            template[character][0]["content"] = f"BACKSTORY {backstory}\n" + "{{format}}"
+
+            with open(config.basedir + path, "w") as f:
+                json.dump(template, f, indent=2)
 
 
 
