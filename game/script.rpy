@@ -17,7 +17,11 @@ label custom_chat_model_label:
 
 label custom_backstory_label:
     "Enter your own backstory for this character. You can also navigate to \"game/assets/prompts/prompt_templates.json\" and edit the \"content\" section manually."
-    $ raw_prompt = Info().getExamplePrompts[character_name][0]["content"].split("{{format}}")[0].replace("BACKSTORY", "")
+    if character_name in Info().getExamplePrompts:
+        $ raw_prompt = Info().getExamplePrompts[character_name][0]["content"].split("{{format}}")[0].replace("BACKSTORY", "")
+    else:
+        $ raw_prompt = Info().getCustomPrompts[character_name][0]["content"].split("{{format}}")[0].replace("BACKSTORY", "")
+
     $ player_prompt = renpy.input(prompt=" ", default=f"{raw_prompt}", exclude="}{", screen="input_long").strip()
     
     $ Configs().update_character_backstory(character=character_name, backstory=player_prompt)
@@ -62,6 +66,29 @@ label start:
             wrapped_sentences.reverse()
             return wrapped_sentences
 
+        def speak(current_char_title, message):
+            global cur_speaker
+            """
+            Specific formatting and customization for each character.
+            Should be used in place of renpy.say()
+            """
+            if current_char_title == "Monika":
+                cur_speaker = "m"
+                monika(message)
+            elif current_char_title == "Sayori":
+                cur_speaker = "s"
+                sayori(message)
+            elif current_char_title == "Natsuki":
+                cur_speaker = "n"
+                natsuki(message)
+            elif current_char_title == "Yuri":
+                cur_speaker = "y"
+                yuri(message)
+            else:
+                cur_speaker = "n_default"
+                renpy.say("[current_char_title]", message)
+            renpy.log(cur_speaker)
+
     $ input_popup_gui = True
 
     stop music fadeout 0.5
@@ -70,7 +97,7 @@ label start:
         jump space_zone
     else:
         call screen bio_screen
-        
+
 
     return
 
@@ -82,7 +109,7 @@ label nameWorld_label:
     scene theme
 
     $ motto = renpy.random.randint(1,315)
-    if motto == 15:    
+    if motto == 15:
         scene black with dissolve
         play sound "<from 0 to 9>bgm/end-voice.ogg"
         $ renpy.pause(11, hard=True)
@@ -186,6 +213,14 @@ label AICharacter:
 
 
 
+    # An Error happened, so stop the current session and return to lobby
+    if convo.startswith("<|Error|>"):
+        $ convo = convo.replace("<|Error|>", "")
+        show screen error_popup(message=convo)
+        "Returning to main menu..."
+        return
+
+
     ###########################
     # Setup old/new data
     ###########################
@@ -262,9 +297,9 @@ label AICharacter:
             $ message = messages.pop()
             if len(messages) > 0:
                 $ message += '...'
-            $ renpy.say("[current_char_title]", message)
+            $ speak(current_char_title, message)
     else:
-        $ renpy.say("[current_char_title]", convo)
+        $ speak(current_char_title, convo)
 
 
     show screen home_icon_screen
@@ -295,6 +330,9 @@ label AICharacter:
 
                 jump purgatory_seq
 
+            # Add user message to history
+            "You" "[user_msg] {fast} {nw}"
+
 
         # Start generating text in a separate thread
         $ chatSetup.is_generating = True
@@ -321,7 +359,8 @@ label AICharacter:
         $ current_background = Data(path_to_user_dir=pathSetup).getSceneData("background")
 
 
-        if final_msg.startswith("<Error>"):
+        if final_msg.startswith("<|Error|>"):
+            $ final_msg = final_msg.replace("<|Error|>", "")
             show screen error_popup(message=final_msg)
         else:
 
@@ -345,7 +384,7 @@ label AICharacter:
                 image full_sprite:
                     im.Composite((960, 960), (0, 0), f"{current_char}/{current_head}")
                     uppies
-                
+
             else:
                 image custom_basic:
                     im.Composite((960, 960), (0, 0), f"assets/imgs/characters/{current_char_title}/{current_left}", (0, 0), f"assets/imgs/characters/{current_char_title}/{current_right}", (0, 0), f"assets/imgs/characters/{current_char_title}/{current_head}")
@@ -377,7 +416,7 @@ label AICharacter:
                 $ message = messages.pop()
                 if len(messages) > 0:
                     $ message += '...'
-                $ renpy.say("[current_char_title]", message)
+                $ speak(current_char_title, message)
 
     return
 

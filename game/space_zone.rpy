@@ -105,6 +105,15 @@ label space_zone:
         $ convo = chatSetup.generated_text
 
 
+
+    # An Error happened, so stop the current session and return to lobby
+    if convo.startswith("<|Error|>"):
+        $ convo = convo.replace("<|Error|>", "")
+        show screen error_popup(message=convo)
+        "Returning to main menu..."
+        return
+
+
     $ memory = Data(path_to_user_dir=pathSetup).getChathistory
 
     if resume:
@@ -114,7 +123,7 @@ label space_zone:
             monika "[last_msg]"
 
     else:
-        $ renpy.say("[purg_name_title]", convo)
+        $ speak(purg_name_title, convo)
 
 
 
@@ -137,6 +146,9 @@ label space_zone:
                 $ user_msg = renpy.input("Enter a message: ")
 
             $ counter += 1
+
+            # Add user message to history
+            "You" "[user_msg] {fast} {nw}"
 
 
 
@@ -169,7 +181,8 @@ label space_zone:
         $ raw_msg = Data(path_to_user_dir=pathSetup).getLastMessage
 
 
-        if final_msg.startswith("<Error>"):
+        if final_msg.startswith("<|Error|>"):
+            $ final_msg = final_msg.replace("<|Error|>", "")
             show screen error_popup(message=final_msg)
         else:
             if special_check:
@@ -186,6 +199,6 @@ label space_zone:
                 $ message = messages.pop()
                 if len(messages) > 0:
                     $ message += '...'
-                $ renpy.say("[purg_name_title]", message)
+                $ speak(f"{purg_name_title}", message)
 
     return
