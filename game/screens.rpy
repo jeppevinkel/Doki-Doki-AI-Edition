@@ -577,11 +577,28 @@ init python:
         renpy.save_persistent()
 
 
-    def FinishEnterPromptHeader():
-        persistent.prompt_header = prompt_header
-        renpy.save_persistent()
-        renpy.hide_screen("prompt_header_input")
-        renpy.show_screen("llm_model_config_screen")
+    def FinishDownload():
+        renpy.jump_out_of_context("download_model_label")
+
+    def FinishSetup():
+        renpy.jump_out_of_context("setup_model_label")
+
+
+
+    def DeleteModel(model):
+        import ollama
+        import httpx
+
+        message = f"Sucessfully deleted {model}!"
+
+        try: ollama.delete(model)
+        except httpx.ConnectError:
+            message = "You don't have ollama running."
+        except ollama.ResponseError as e:
+            message = f"{e.error}"
+
+        renpy.show_screen("basic_popup", title="Delete Model",
+        message=message, ok_action=renpy.hide_screen("basic_popup"))
 
 
     def SwitchToModelConfig():
@@ -965,10 +982,25 @@ init python:
 #default num = None
 init python:
     import os
+    import ollama
+    import httpx
+
     chats = ""
     try: chats = os.listdir(f"{config.basedir}/chats")
     except FileNotFoundError: pass
-    
+
+    ai_list = []
+    try:
+        lst = ollama.list()
+
+        for i in lst["models"]:
+            ai_list.append(i["name"])
+    except httpx.ConnectError:
+        ai_list = "off"
+
+
+
+
 
 screen file_slots(title):
     default page_name_value = FilePageNameInputValue()
@@ -1045,16 +1077,27 @@ screen custom_save_screen():
             style_prefix "slider"
             box_wrap True
 
-            vbox:
+            hbox:
                 null height 50
                 textbutton "Back":
                     style_prefix "navigation_button_text"
 
                     xpos 20
-                    
+
                     hover_sound "gui/sfx/hover.ogg"
                     activate_sound "gui/sfx/select.ogg"
                     action Hide("custom_save_screen")
+
+                null height 50
+                textbutton "Refresh":
+                    style_prefix "navigation_button_text"
+
+                    xpos 120
+
+                    hover_sound "gui/sfx/hover.ogg"
+                    activate_sound "gui/sfx/select.ogg"
+                    action renpy.restart_interaction
+                    #action renpy.full_restart
 
 
             vbox:
@@ -1082,7 +1125,7 @@ screen select_model_name_screen():
     $ other_local_models = chat_model_dict["llms"]["other"]
 
 
-    $ important_info = "Type \"ollama run (model name)\" in a console on your computer.\nFor example: ollama run llama3.1" if llm_mode == True else "Make sure you're using the correct API key for the model name you select."
+    $ important_info = "Type \"ollama pull (model name)\" in a console on your computer.\nFor example: ollama pull llama3.1" if llm_mode == True else "Make sure you're using the correct API key for the model name you select."
     use game_menu(_("Models"), scroll="viewport"):
 
         vbox:
@@ -1094,24 +1137,27 @@ screen select_model_name_screen():
             style_prefix "slider"
             box_wrap True
 
-            vbox:
+            hbox:
                 label _(f"Current Model: {persistent.chatModel}")
-                textbutton _("Important Info") action Show(screen="basic_popup", title="Info", message=important_info, ok_action=NullAction())
-
-
 
             vbox:
                 if llm_mode == True:
-                    label _(f"Suggested Models")
-                    for model in fav_local_models:
-                        textbutton _(f"{model}") action Show(screen="basic_popup", title="Local Models", message="Sucessfully updated model!", ok_action=Function(FinishUpdateModelName, model))
+                    label _(f"Your Models")
+                    if ai_list == []:
+                        textbutton _("None") action NullAction()
+                    else:
+                        if ai_list == "off":
+                            textbutton _("You don't have ollama running.") action NullAction()
+                        else:
+                            for model in ai_list:
+                                hbox:
+                                    textbutton _(f"{model}") action Show(screen="basic_popup", title="Local Models", message="Sucessfully updated model!", ok_action=Function(FinishUpdateModelName, model))
+                                    textbutton _(" | ") action NullAction()
+                                    textbutton _("delete") action Function(DeleteModel, model)
 
-                    label _(f"Other Models")
-                    for model in other_local_models:
-                        textbutton _(f"{model}") action Show(screen="basic_popup", title="Local Models", message="Sucessfully updated model!", ok_action=Function(FinishUpdateModelName, model))
+                    label _(f"Setup")
+                    textbutton _("Download Models") action Function(FinishSetup)
 
-
-                textbutton _("Custom Model") action Jump("custom_chat_model_label")
 
 
 
@@ -1316,7 +1362,7 @@ screen preferences():
                             style "mute_all_button"
 
                 vbox:
-                    textbutton _("Model Name") action ShowMenu("select_model_name_screen")
+                    textbutton _("AI Models") action ShowMenu("select_model_name_screen")
                 vbox:
                     textbutton _("Model Config") action ShowMenu("llm_model_config_screen")
                 vbox:

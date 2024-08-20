@@ -1425,7 +1425,7 @@ define mc_default = DynamicCharacter('player', what_prefix='"', what_suffix='"',
 define default_context_window = "1024"
 define default_temp = "6"
 define default_seed = "random"
-define chatModel = "llama3.1"
+define chatModel = "None"
 
 default persistent.context_window = default_context_window
 default persistent.temp = default_temp
@@ -1460,8 +1460,8 @@ default persistent.first_sayori = True
 default persistent.in_game = False
 define chat_model_dict = {
     "llms": {
-        "suggested": ["llama3.1", "qwen2"],
-        "other": ["llama3", "mistral"]
+        "suggested": ["llama3.1", "llama3", "qwen2"],
+        "other": ["mistral"]
     }
 }
 
@@ -1472,6 +1472,9 @@ default persistent.purgatory = None
 default persistent.purgatory_name = None
 default persistent.first_scare = False
 default cur_speaker = ""
+default is_downloading = False
+default download_progress = ""
+default download_text = ""
 
 
 define _dismiss_pause = config.developer
